@@ -13,7 +13,7 @@ from .read_data import *
 
 
 class StereoDataset(data.Dataset):
-    def __init__(self, resize, disp_reader):    
+    def __init__(self, resize, disp_reader, min_disp, max_disp):    
 
         self.is_test = False
         self.init_seed = False
@@ -22,6 +22,8 @@ class StereoDataset(data.Dataset):
         self.extra_info = []
         self.resize = resize
         self.dispreader = disp_reader
+        self.min_disp = min_disp
+        self.max_disp = max_disp
 
     def __getitem__(self, index):
 
@@ -36,7 +38,7 @@ class StereoDataset(data.Dataset):
         if self.is_test:
             return img1, img2
         
-        disp, valid = self.dispreader(self.disparity_list[index], self.resize)
+        disp, valid = self.dispreader(self.disparity_list[index], self.resize, self.min_disp, self.max_disp)
         disp = torch.from_numpy(disp).float()
         valid = torch.from_numpy(valid).bool()
 
@@ -46,8 +48,8 @@ class StereoDataset(data.Dataset):
         return len(self.image_list)
     
 class DFC2019(StereoDataset):
-    def __init__(self, root, resize, image_set='training'):
-        super().__init__(resize=resize, disp_reader=read_disp_dfc)
+    def __init__(self, root, resize, min_disp, max_disp, image_set='training'):
+        super().__init__(resize=resize, disp_reader=read_disp_dfc, min_disp=min_disp, max_disp=max_disp)
         assert os.path.exists(root)
 
         image1_list = sorted(glob(os.path.join(root, 'Track2-RGB-*/*LEFT_RGB.tif')))
@@ -69,8 +71,8 @@ class DFC2019(StereoDataset):
             self.disparity_list += [disp]
 
 class WHUStereo(StereoDataset):
-    def __init__(self, root, resize, image_set='training'):
-        super().__init__(resize=resize, disp_reader=read_disp_whu)
+    def __init__(self, root, resize, min_disp, max_disp, image_set='training'):
+        super().__init__(resize=resize, disp_reader=read_disp_whu, min_disp=min_disp, max_disp=max_disp)
         assert os.path.exists(root)
 
         if image_set == "training":
@@ -79,38 +81,38 @@ class WHUStereo(StereoDataset):
             disp_list = sorted(glob(os.path.join(root, 'train/disp/*.tiff')))
 
         if image_set == "testing":
-            image1_list = sorted(glob(os.path.join(root, 'test/left/*.tiff')))
-            image2_list = sorted(glob(os.path.join(root, 'test/right/*.tiff')))
-            disp_list = sorted(glob(os.path.join(root, 'test/disp/*.tiff')))
+            image1_list = sorted(glob(os.path.join(root, 'val/left/*.tiff')))
+            image2_list = sorted(glob(os.path.join(root, 'val/right/*.tiff')))
+            disp_list = sorted(glob(os.path.join(root, 'val/disp/*.tiff')))
 
         for idx, (img1, img2, disp) in enumerate(zip(image1_list, image2_list, disp_list)):
             self.image_list += [[img1, img2]]
             self.disparity_list += [disp]
 
 
-def fetch_dataset(dataset_name, root, batch_size, resize, mode="training"):
+def fetch_dataset(dataset_name, root, batch_size, resize, min_disp, max_disp, mode="training"):
     
     if dataset_name == 'DFC2019':
         if mode == 'training':
-            dataset = DFC2019(root=root, resize = resize,
+            dataset = DFC2019(root=root, resize = resize, min_disp = min_disp, max_disp = max_disp, 
                             image_set='training')
         elif mode == 'testing':
-            dataset = DFC2019(root=root, resize = resize,
+            dataset = DFC2019(root=root, resize = resize, min_disp = min_disp, max_disp = max_disp,
                             image_set='testing')     
     elif dataset_name == 'WHUStereo':
         if mode == 'training':
-            dataset = WHUStereo(root=root, resize = resize,
+            dataset = WHUStereo(root=root, resize = resize, min_disp = min_disp, max_disp = max_disp,
                             image_set='training')
         elif mode == 'testing':
-            dataset = WHUStereo(root=root, resize = resize,
+            dataset = WHUStereo(root=root, resize = resize, min_disp = min_disp, max_disp = max_disp,
                             image_set='testing') 
     elif dataset_name == "all":
         if mode == 'training':
-            dataset = DFC2019(root= '/home/lab1/datasets/DFC2019_track2_grayscale_8bit', resize = resize, image_set='training')
-            dataset += WHUStereo(root='/home/lab1/datasets/whu_stereo_8bit/with_ground_truth', resize = resize, image_set='training')
+            dataset = DFC2019(root= '/home/lab1/datasets/DFC2019_track2_grayscale_8bit', resize = resize, min_disp = min_disp, max_disp = max_disp, image_set='training')
+            dataset += WHUStereo(root='/home/lab1/datasets/whu_stereo_8bit/with_ground_truth', resize = resize, min_disp = min_disp, max_disp = max_disp, image_set='training')
         elif mode == 'testing':
-            dataset = DFC2019(root='/home/lab1/datasets/DFC2019_track2_grayscale_8bit', resize = resize, image_set='testing')
-            dataset += WHUStereo(root='/home/lab1/datasets/whu_stereo_8bit/with_ground_truth', resize = resize, image_set='testing')         
+            dataset = DFC2019(root='/home/lab1/datasets/DFC2019_track2_grayscale_8bit', resize = resize, min_disp = min_disp, max_disp = max_disp, image_set='testing')
+            dataset += WHUStereo(root='/home/lab1/datasets/whu_stereo_8bit/with_ground_truth', resize = resize, min_disp = min_disp, max_disp = max_disp, image_set='testing')         
     else: 
         print("no such a dataset")
 

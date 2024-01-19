@@ -23,7 +23,7 @@ def read_img(filename, resize):
         img = np.array(img)
     return img
 
-def read_disp_dfc(filename, resize):
+def read_disp_dfc(filename, resize, min_disp, max_disp):
     '''
     @para: resize -> [w, h]
     '''
@@ -37,16 +37,18 @@ def read_disp_dfc(filename, resize):
 
     # img has been resized, thus the disparity should resized
     if resize[0] != w:
-        scale = w/resize[0]
+        scale = w / resize[0]
         disp = disp / scale
 
     # generate mask
-    valid = (disp != 0)
+    valid = np.logical_and((disp != 0), (disp < max_disp))
+    valid = np.logical_and(valid, (disp > min_disp))
+
     # valid = np.ones_like(disp)
     return disp, valid
 
 
-def read_disp_whu(filename, resize):
+def read_disp_whu(filename, resize, min_disp, max_disp):
     '''
     @para: resize -> [w, h]
     '''
@@ -56,13 +58,13 @@ def read_disp_whu(filename, resize):
         disp = disp.resize(resize)
     disp = np.array(disp)
 
-    # generate mask
-    valid = (disp > -128)
-
     # img has been resized, thus the disparity should resized
     if resize[0] != w:
-        scale = w/resize[0]
+        scale = w / resize[0]
         disp = disp / scale
+
+    # generate mask
+    valid = np.logical_and((disp < max_disp), (disp > min_disp))
     # valid = np.ones_like(disp)
     return disp, valid
 

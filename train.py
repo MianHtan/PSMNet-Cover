@@ -35,7 +35,8 @@ def train(net, dataset_name, batch_size, root, min_disp, max_disp, iters, init_l
 
     # fetch traning data
     train_loader = fetch_dataset(dataset_name = dataset_name, root = root,
-                                batch_size = batch_size, resize = resize, mode = 'training')
+                                batch_size = batch_size, resize = resize, 
+                                min_disp = min_disp, max_disp = max_disp, mode = 'training')
     
     steps_per_iter = train_loader.__len__()
     num_steps = steps_per_iter * iters    
@@ -43,7 +44,7 @@ def train(net, dataset_name, batch_size, root, min_disp, max_disp, iters, init_l
     print('Number of model parameters: {}'.format(sum([p.data.nelement() for p in net.parameters()])))
     # initialize the optimizer and lr scheduler
     optimizer = torch.optim.AdamW(net.parameters(), lr=init_lr)
-    scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, init_lr*2, num_steps + 100,
+    scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, init_lr, num_steps + 100,
                                               pct_start=0.01, cycle_momentum=False, anneal_strategy='linear')
     
     criterion = Tripleloss().to(device)
@@ -66,7 +67,6 @@ def train(net, dataset_name, batch_size, root, min_disp, max_disp, iters, init_l
             loss.backward()
             optimizer.step()
             scheduler.step()
-
             # code of validation
             if total_steps % save_frequency == (save_frequency - 1):
                 # save checkpoints
@@ -77,24 +77,32 @@ def train(net, dataset_name, batch_size, root, min_disp, max_disp, iters, init_l
                 if require_validation:
                     print("--- start validation ---")
                     test_loader = fetch_dataset(dataset_name = dataset_name, root = root,
-                                    batch_size = batch_size, resize = resize, mode = 'testing')
+                                    batch_size = batch_size, resize = resize, 
+                                    min_disp = min_disp, max_disp = max_disp, mode = 'testing')
                     
-                    net.eval()
-                    val_loss = 0
+                    val_loss_train = 0
+                    val_loss_eval = 0
                     with torch.no_grad():
                         for i_batch, data_blob in enumerate(tqdm(test_loader)):
                             image1, image2, disp_gt, valid = [x.to(device) for x in data_blob]
-                            pred = net(image1, image2, min_disp, max_disp)
 
-                            val_loss += F.smooth_l1_loss(pred[valid], disp_gt[valid], reduction='mean')
-                        val_loss = val_loss / (test_loader.__len__() * batch_size)
-                    writer.add_scalar(tag="vaildation loss", scalar_value=val_loss, global_step=total_steps+1)
+                            net.eval()
+                            pred = net(image1, image2, min_disp, max_disp)
+                            val_loss_eval += F.smooth_l1_loss(pred[valid], disp_gt[valid], reduction='mean')
+
+                            net.train()
+                            pred1, pred2, pred3 = net(image1, image2, min_disp, max_disp)
+                            val_loss_train += F.smooth_l1_loss(pred3[valid], disp_gt[valid], reduction='mean')
+                        val_loss_eval = val_loss_eval / test_loader.__len__()
+                        val_loss_train = val_loss_train / test_loader.__len__()
+                    writer.add_scalars(main_tag="loss/vaildation loss", tag_scalar_dict = {'train()': val_loss_train}, global_step=total_steps+1)
+                    writer.add_scalars(main_tag="loss/vaildation loss", tag_scalar_dict = {'eval()':val_loss_eval}, global_step=total_steps+1)
 
                 net.train()
             
             # write loss and lr to log
-            writer.add_scalar(tag="training loss", scalar_value=loss, global_step=total_steps+1)
-            writer.add_scalar(tag="lr", scalar_value=scheduler.get_last_lr()[0], global_step=total_steps+1)
+            writer.add_scalar(tag="loss/training loss", scalar_value=loss, global_step=total_steps+1)
+            writer.add_scalar(tag="lr/lr", scalar_value=scheduler.get_last_lr()[0], global_step=total_steps+1)
             total_steps += 1
 
             if total_steps > num_steps:
@@ -122,7 +130,7 @@ if __name__ == '__main__':
     # training set keywords: 'DFC2019', 'WHUStereo', 'all'
     # '/home/lab1/datasets/DFC2019_track2_grayscale_8bit'
     # '/home/lab1/datasets/whu_stereo_8bit/with_ground_truth'
-    train(net=net, dataset_name='DFC2019', root = '/home/lab1/datasets/DFC2019_track2_grayscale_8bit', 
-          batch_size=1, min_disp=-32, max_disp=64, iters=10, init_lr=0.0001,
-          resize = [1024,1024], save_frequency = 2000, require_validation=True, 
-          device=device, pretrain='checkpoints/PSMNet_DFC2019.pth')
+    train(net=net, dataset_name='WHUStereo', root = '/home/lab1/datasets/whu_stereo_8bit/with_ground_truth', 
+          batch_size=1, min_disp=-64, max_disp=64, iters=10, init_lr=0.0002,
+          resize = [1024,1024], save_frequency = 500, require_validation=True, 
+          device=device, pretrain='checkpoints/WHUStereo/PSMNet_WHUStereo.pth')

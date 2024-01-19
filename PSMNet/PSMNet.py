@@ -1,6 +1,7 @@
 import torch
 from torch import nn
 from torch.nn import functional as F 
+from torch.autograd import Variable
 import math
 
 from PSMNet.Extractor import PSM_Extractor
@@ -11,7 +12,7 @@ from PSMNet.EncoderDecoder import StackHourglass
 class PSMNet(nn.Module):
     def __init__(self):
         super().__init__()
-        self.fea1 = nn.Sequential(PSM_Extractor(3, 128))
+        self.fea1 = PSM_Extractor(3, 128)
         self.spp = SPP()
         self.hourglass = StackHourglass()
 
@@ -23,7 +24,7 @@ class PSMNet(nn.Module):
         featureL = self.spp(featureL1, featureL2)
         featureR = self.spp(featureR1, featureR2)
         # construct cost volume
-        cost_vol = self.cost_volume(featureL, featureR, min_disp, max_disp) # shape -> B * 2C * (maxdisp-mindisp)/4 * H/4 * W/4
+        cost_vol = self.cost_volume(featureL, featureR, min_disp, max_disp) # shape -> B * 64 * (maxdisp-mindisp)/4 * H/4 * W/4
 
         # cost filtering
         cost_vol1, cost_vol2, cost_vol3 = self.hourglass(cost_vol) # shape -> B * 1 * (maxdisp-mindisp)/4 * H/4 * W/4
@@ -48,11 +49,10 @@ class PSMNet(nn.Module):
         device = feaL.device
 
         # feature map has been downsample, so disparity range should be devided by 2
-        max_disp = int(max_disp/4)
-        min_disp = int(min_disp/4)
+        max_disp = max_disp // 4
+        min_disp = min_disp // 4
         cost = torch.zeros(B, C*2, max_disp-min_disp, H, W).to(device)
         # cost[:, 0:C, :, :, :] = feaL.unsqueeze(2).repeat(1,1,max_disp-min_disp,1,1)
-
 
         for i in range(min_disp, max_disp):
             if i < 0:
@@ -61,6 +61,7 @@ class PSMNet(nn.Module):
             if i >= 0:
                 cost[:, 0:C, i, :, i:] = feaR[:, :, :, i:]
                 cost[:, C:, i, :, i:] = feaR[:, :, :, :W-i]
+        cost = cost.contiguous()
         return cost
     
     def softargmax(self, cost, min_disp, max_disp):

@@ -27,28 +27,22 @@ class StackHourglass(nn.Module):
                                       nn.Conv3d(in_channels=32, out_channels=32, kernel_size=3, padding=1, stride=1),nn.BatchNorm3d(32),nn.ReLU(inplace=True))
 
         # stage 1
-        self.downsample1_1 = nn.Sequential(downsampleblock(32,64,2))
-        self.downsample1_2 = nn.Sequential(downsampleblock(64,64,2))
-        self.upsample1_1 = nn.ConvTranspose3d(64, 64, kernel_size=3, padding=1, output_padding=1, stride=2)
-        self.debn1_1 = nn.BatchNorm3d(64)
-        self.upsample1_2 = nn.ConvTranspose3d(64, 32, kernel_size=3, padding=1, output_padding=1, stride=2)
-        self.debn1_2 = nn.BatchNorm3d(32)
+        self.downsample1_1 = downsampleblock(32,64,2)
+        self.downsample1_2 = downsampleblock(64,64,2)
+        self.upsample1_1 = nn.Sequential(nn.ConvTranspose3d(64, 64, kernel_size=3, padding=1, output_padding=1, stride=2),nn.BatchNorm3d(64))
+        self.upsample1_2 = nn.Sequential(nn.ConvTranspose3d(64, 32, kernel_size=3, padding=1, output_padding=1, stride=2),nn.BatchNorm3d(32))
 
         # stage 2
-        self.downsample2_1 = nn.Sequential(downsampleblock(32,64,2))
-        self.downsample2_2 = nn.Sequential(downsampleblock(64,64,2))
-        self.upsample2_1 = nn.ConvTranspose3d(64, 64, kernel_size=3, padding=1, output_padding=1, stride=2)
-        self.debn2_1 = nn.BatchNorm3d(64)
-        self.upsample2_2 = nn.ConvTranspose3d(64, 32, kernel_size=3, padding=1, output_padding=1, stride=2)
-        self.debn2_2 = nn.BatchNorm3d(32)
+        self.downsample2_1 = downsampleblock(32,64,2)
+        self.downsample2_2 = downsampleblock(64,64,2)
+        self.upsample2_1 = nn.Sequential(nn.ConvTranspose3d(64, 64, kernel_size=3, padding=1, output_padding=1, stride=2),nn.BatchNorm3d(64))
+        self.upsample2_2 = nn.Sequential(nn.ConvTranspose3d(64, 32, kernel_size=3, padding=1, output_padding=1, stride=2),nn.BatchNorm3d(32))
 
         # stage 3
-        self.downsample3_1 = nn.Sequential(downsampleblock(32,64,2))
-        self.downsample3_2 = nn.Sequential(downsampleblock(64,64,2))
-        self.upsample3_1 = nn.ConvTranspose3d(64, 64, kernel_size=3, padding=1, output_padding=1, stride=2)
-        self.debn3_1 = nn.BatchNorm3d(64)
-        self.upsample3_2 = nn.ConvTranspose3d(64, 32, kernel_size=3, padding=1, output_padding=1, stride=2)
-        self.debn3_2 = nn.BatchNorm3d(32)
+        self.downsample3_1 = downsampleblock(32,64,2)
+        self.downsample3_2 = downsampleblock(64,64,2)
+        self.upsample3_1 = nn.Sequential(nn.ConvTranspose3d(64, 64, kernel_size=3, padding=1, output_padding=1, stride=2),nn.BatchNorm3d(64))
+        self.upsample3_2 = nn.Sequential(nn.ConvTranspose3d(64, 32, kernel_size=3, padding=1, output_padding=1, stride=2),nn.BatchNorm3d(32))
         
         # output
         self.out_conv1 = nn.Sequential(nn.Conv3d(in_channels=32, out_channels=32, kernel_size=3, padding=1, stride=1),nn.BatchNorm3d(32),nn.ReLU(inplace=True),
@@ -64,26 +58,20 @@ class StackHourglass(nn.Module):
         #stage 1
         cost_down1_1 = F.relu(self.downsample1_1(cost))
         cost_down1_2 = F.relu(self.downsample1_2(cost_down1_1))
-        cost_up1_1 = self.debn1_1(self.upsample1_1(cost_down1_2))
-        cost_up1_1 = F.relu( cost_up1_1 + cost_down1_1 )
-        cost_up1_2 = self.debn1_2(self.upsample1_2(cost_up1_1))
-        cost_up1_2 = F.relu( cost_up1_2 + cost )
+        cost_up1_1 = F.relu( self.upsample1_1(cost_down1_2) + cost_down1_1 )
+        cost_up1_2 = self.upsample1_2(cost_up1_1) + cost
 
         #stage 2
         cost_down2_1 = F.relu(self.downsample2_1(cost_up1_2) + cost_up1_1)
         cost_down2_2 = F.relu(self.downsample2_2(cost_down2_1))
-        cost_up2_1 = self.debn2_1(self.upsample2_1(cost_down2_2))
-        cost_up2_1 = F.relu( cost_up2_1 + cost_down1_1 )
-        cost_up2_2 = self.debn2_2(self.upsample2_2(cost_up2_1))
-        cost_up2_2 = F.relu( cost_up2_2 + cost )
+        cost_up2_1 = F.relu( self.upsample2_1(cost_down2_2) + cost_down1_1 )
+        cost_up2_2 = self.upsample2_2(cost_up2_1) + cost
 
         #stage 3
         cost_down3_1 = F.relu(self.downsample3_1(cost_up1_2) + cost_up2_1)
         cost_down3_2 = F.relu(self.downsample3_2(cost_down3_1))
-        cost_up3_1 = self.debn3_1(self.upsample3_1(cost_down3_2))
-        cost_up3_1 = F.relu( cost_up3_1 + cost_down1_1 )
-        cost_up3_2 = self.debn3_2(self.upsample3_2(cost_up3_1))
-        cost_up3_2 = F.relu( cost_up3_2 + cost )
+        cost_up3_1 = F.relu( self.upsample3_1(cost_down3_2) + cost_down1_1 )
+        cost_up3_2 = self.upsample3_2(cost_up3_1) + cost
 
         out1 = self.out_conv1(cost_up1_2)
         out2 = self.out_conv2(cost_up2_2) + out1

@@ -31,6 +31,6 @@ class SPP(nn.Module):
 
         out = torch.cat((x_low, x, branch1, branch2, branch3, branch4), 1)
         out = F.relu(self.last_conv1(out))
-        out = self.last_conv2(out)
+        out = F.relu(self.last_conv2(out))
 
         return out

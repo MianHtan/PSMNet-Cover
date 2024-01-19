@@ -40,19 +40,18 @@ class PSM_Extractor(nn.Module):
         self.resblock2 = self._make_layer(in_channel=32, out_channel=64, num_resblock=16, stride=2, dilation = 1)
         self.resblock3 = self._make_layer(in_channel=64, out_channel=output_channel, num_resblock=3, stride=1, dilation = 2)
         self.resblock4 = self._make_layer(in_channel=output_channel, out_channel=output_channel, num_resblock=3, stride=1, dilation = 4)
-        self.conv_last = nn.Conv2d(in_channels=output_channel, out_channels=output_channel, kernel_size=3, padding=1, stride=1)
     
     def _make_layer(self, in_channel, out_channel, num_resblock, stride, dilation):
         resblk = []
         for i in range(num_resblock):
             if (i == 0) and ((in_channel != out_channel) or (stride != 1)):
                 resblk.append(BasciBlock(in_channel, out_channel, stride=stride, dilation = dilation, use_1x1conv=True))
-                continue
-            resblk.append(BasciBlock(out_channel, out_channel, dilation = dilation))
+            else:
+                resblk.append(BasciBlock(out_channel, out_channel, dilation = dilation))
         return nn.Sequential(*resblk)
     
     def forward(self, x):
-        x = self.bn1(self.conv1(x))
+        x = self.conv1(x)
         x = self.bn1(x)
         x = F.relu(x)
         x = self.conv2(x)
@@ -61,11 +60,9 @@ class PSM_Extractor(nn.Module):
         x = self.conv3(x)
         x = self.bn3(x)
         x = F.relu(x)
-        
-
+    
         x = self.resblock1(x)
         y1 = self.resblock2(x)
         y2 = self.resblock3(y1)
         y2 = self.resblock4(y2)
-        # Y = self.conv_last(x)
         return y1, y2
