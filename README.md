@@ -26,4 +26,5 @@ tensorboard --logdir ./logs
 - opencv-python             4.8.1.78
 
 ### demo
-You can test a single pair of stereo image using the notebook `demo.ipynb`
+You can test a single pair of stereo image using the notebook `demo.ipynb`<br />
+Demo is based on 3 channel model. If your trained model is train on single channel image, you need to modify the code in notebook.
