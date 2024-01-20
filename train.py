@@ -70,8 +70,8 @@ def train(net, dataset_name, batch_size, root, min_disp, max_disp, iters, init_l
             # code of validation
             if total_steps % save_frequency == (save_frequency - 1):
                 # save checkpoints
-                save_path = Path('training_checkpoints/%dsteps_PSMNet_%s.pth' % (total_steps + 1, dataset_name))
-                torch.save(net.state_dict(), save_path)
+                # save_path = Path('training_checkpoints/%dsteps_PSMNet_%s.pth' % (total_steps + 1, dataset_name))
+                # torch.save(net.state_dict(), save_path)
 
                 # load validation data 
                 if require_validation:
@@ -125,7 +125,7 @@ if __name__ == '__main__':
 
     device = torch.device("cuda:0" if torch.cuda.is_available else "cpu")
 
-    net = PSMNet()
+    net = PSMNet(image_channel=3)
 
     # training set keywords: 'DFC2019', 'WHUStereo', 'all'
     # '/home/lab1/datasets/DFC2019_track2_grayscale_8bit'

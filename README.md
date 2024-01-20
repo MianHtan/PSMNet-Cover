@@ -5,7 +5,8 @@ This is a non-official pytorch implementation of stereo matching network [PSMNet
 - Using OneCycleLR to adjust the learning rate
 
 ### Dataset
-The dataloader only support `DFC2019` and `WHU-Stereo` dataset, the dataset was preprocessed to 8 bits <br />
+The dataloader only support `DFC2019` and `WHU-Stereo` dataset<br />
+The dataloader can support both 3channel 8bit and 1channel 16bit image. <br />
 You can train the model by using `train.py`
 
 ```

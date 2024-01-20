@@ -10,9 +10,9 @@ from PSMNet.EncoderDecoder import StackHourglass
 
 
 class PSMNet(nn.Module):
-    def __init__(self):
+    def __init__(self, image_channel=3):
         super().__init__()
-        self.fea1 = PSM_Extractor(3, 128)
+        self.fea1 = PSM_Extractor(image_channel, 128)
         self.spp = SPP()
         self.hourglass = StackHourglass()
 
